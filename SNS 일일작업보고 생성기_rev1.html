@@ -1,0 +1,836 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+    <meta name="theme-color" content="#667eea" />
+    <meta name="description" content="발주처 보고용 텍스트 생성 모바일 앱" />
+    <title>📋 공사일보 생성기</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
+        .app { min-height: 100vh; display: flex; flex-direction: column; }
+        .app-header { background: rgba(255,255,255,0.95); backdrop-filter: blur(10px); padding: 20px; text-align: center; box-shadow: 0 2px 20px rgba(0,0,0,0.1); border-bottom: 1px solid rgba(255,255,255,0.2); }
+        .app-header h1 { color: #333; font-size: 24px; font-weight: 700; margin-bottom: 8px; }
+        .app-header p { color: #555; font-size: 14px; margin: 0; }
+        .app-main { flex: 1; padding: 20px; max-width: 600px; margin: 0 auto; width: 100%; }
+        .input-section { background: rgba(255,255,255,0.95); backdrop-filter: blur(10px); border-radius: 20px; padding: 24px; margin-bottom: 20px; box-shadow: 0 8px 32px rgba(0,0,0,0.1); border: 1px solid rgba(255,255,255,0.2); }
+        .input-group { margin-bottom: 20px; }
+        .input-group:last-of-type { margin-bottom: 24px; }
+        .input-group label { display: block; font-weight: 600; color: #333; margin-bottom: 8px; font-size: 16px; }
+        .input-group textarea { width: 100%; padding: 16px; border: 2px solid #e1e5e9; border-radius: 12px; font-size: 16px; line-height: 1.5; resize: vertical; transition: all 0.3s ease; font-family: inherit; background: #fafafa; }
+        .input-group textarea:focus { outline: none; border-color: #667eea; background: white; box-shadow: 0 0 0 3px rgba(102,126,234,0.1); }
+        .input-group textarea::placeholder { color: #777; }
+        .button-group { display: flex; gap: 12px; margin-top: 24px; }
+        .generate-btn, .clear-btn { flex: 1; padding: 16px 24px; border: none; border-radius: 12px; font-size: 16px; font-weight: 600; cursor: pointer; transition: all 0.3s ease; text-align: center; }
+        .generate-btn { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; }
+        .generate-btn:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(102,126,234,0.3); }
+        .generate-btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+        .clear-btn { background: #f8f9fa; color: #666; border: 2px solid #e1e5e9; }
+        .clear-btn:hover { background: #e9ecef; border-color: #ced4da; transform: translateY(-1px); }
+        .clear-btn:active {
+            transform: scale(0.97);
+            transition: transform 0.1s ease;
+        }
+        .prompt-btn {
+            background: #f8f9fa;
+            color: #333;
+            border: 2px solid #e1e5e9;
+        }
+        .prompt-btn:hover {
+            background: #e9ecef;
+            border-color: #ced4da;
+        }
+        .prompt-btn:active {
+            transform: scale(0.97);
+            transition: transform 0.1s ease;
+        }
+        .output-section { background: rgba(255,255,255,0.95); backdrop-filter: blur(10px); border-radius: 20px; padding: 24px; box-shadow: 0 8px 32px rgba(0,0,0,0.1); border: 1px solid rgba(255,255,255,0.2); animation: fadeInUp 0.5s ease; display: none; }
+        .output-section.show { display: block; }
+        @keyframes fadeInUp { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
+        .output-section h2 { color: #333; font-size: 20px; margin-bottom: 16px; font-weight: 700; }
+        .report-output { background: #f8f9fa; border-radius: 12px; padding: 20px; margin-bottom: 20px; border-left: 4px solid #667eea; overflow-x: auto; }
+        .report-output pre { margin: 0; white-space: pre-wrap; word-wrap: break-word; font-family: inherit; font-size: 14px; line-height: 1.6; color: #333; }
+        .share-buttons { display: flex; gap: 12px; flex-wrap: wrap; }
+        .share-btn, .copy-btn, .edit-btn {
+            flex: 1; padding: 14px 20px; border: none; border-radius: 12px;
+            font-size: 15px; font-weight: 600; cursor: pointer; transition: all 0.3s ease;
+            min-width: calc(33.333% - 8px);
+        }
+        .share-btn {
+            background: #FEE500; /* 카카오톡 노란색 */
+            color: #191919; /* 대비를 위한 어두운 글자색 */
+        }
+        .share-btn:hover {
+            background: #FADA0A; /* 호버 시 약간 어둡게 */
+            box-shadow: 0 6px 20px rgba(254,229,0,0.4);
+        }
+        .copy-btn { background: #f8f9fa; color: #666; border: 2px solid #e1e5e9; }
+        .copy-btn:hover { background: #e9ecef; border-color: #ced4da; transform: translateY(-1px); }
+        .edit-btn {
+            background: #6c757d; /* 부트스트랩 secondary 느낌 */
+            color: white;
+        }
+        .edit-btn:hover {
+            background: #5a6268;
+            transform: translateY(-1px);
+        }
+        .app-footer { background: rgba(255,255,255,0.1); backdrop-filter: blur(10px); padding: 16px; text-align: center; border-top: 1px solid rgba(255,255,255,0.2); }
+        .app-footer p { color: rgba(255,255,255,0.8); font-size: 12px; margin: 0; }
+        .loading { display: inline-block; width: 20px; height: 20px; border: 3px solid rgba(255,255,255,.3); border-radius: 50%; border-top-color: #fff; animation: spin 1s ease-in-out infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        @media (max-width: 480px) { .app-header { padding: 16px; } .app-header h1 { font-size: 20px; } .app-main { padding: 16px; } .input-section, .output-section { padding: 20px; border-radius: 16px; } .button-group, .share-buttons { flex-direction: column; } .generate-btn, .clear-btn, .share-btn, .copy-btn { width: 100%; margin-bottom: 8px; } .input-group textarea { font-size: 16px; } }
+        @media (hover: none) and (pointer: coarse) { .generate-btn:hover:not(:disabled), .clear-btn:hover, .share-btn:hover, .copy-btn:hover { transform: none; } .generate-btn:active:not(:disabled) { transform: scale(0.98); } .clear-btn:active, .share-btn:active, .copy-btn:active { transform: scale(0.98); } }
+        .bottom-buttons {
+            position: fixed;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(255,255,255,0.95);
+            display: flex;
+            gap: 8px;
+            padding: 16px 12px 20px 12px;
+            box-shadow: 0 -2px 20px rgba(0,0,0,0.07);
+            z-index: 100;
+        }
+        .bottom-buttons button {
+            flex: 1;
+            font-size: 16px;
+            font-weight: 600;
+            border-radius: 12px;
+            border: none;
+            padding: 16px 0;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 9999;
+            left: 0; top: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.3);
+            justify-content: center;
+            align-items: center;
+        }
+        .modal.show {
+            display: flex;
+        }
+        .modal-content {
+            background: #fff;
+            border-radius: 16px;
+            padding: 24px;
+            max-width: 600px;
+            width: 90vw;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.18);
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+        .modal-content h3 {
+            margin: 0 0 8px 0;
+            font-size: 18px;
+            font-weight: 700;
+        }
+        .modal-actions {
+            display: flex;
+            gap: 12px;
+            justify-content: flex-end;
+        }
+        .modal-actions button {
+            padding: 10px 20px;
+            border-radius: 8px;
+            border: none;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        #promptSaveBtn { background: #667eea; color: #fff; }
+        #promptCancelBtn { background: #f8f9fa; color: #333; border: 1px solid #e1e5e9; }
+        @media (max-width: 480px) {
+            .modal-content { padding: 12px; }
+            .modal-content h3 { font-size: 16px; }
+        }
+        /* 보고서 편집용 textarea 스타일 */
+        .report-edit-area {
+            width: 100%;
+            min-height: 200px; /* pre 태그와 유사한 높이 */
+            padding: 16px;
+            border: 2px solid #e1e5e9;
+            border-radius: 12px;
+            font-size: 14px; /* pre 태그와 동일하게 */
+            line-height: 1.6; /* pre 태그와 동일하게 */
+            font-family: inherit; /* pre 태그와 동일하게 */
+            resize: vertical;
+            margin-bottom: 12px;
+        }
+        /* QA Log Card 스타일 */
+        .qa-log-card {
+            background: rgba(255,255,255,0.9);
+            backdrop-filter: blur(8px);
+            border-radius: 16px;
+            padding: 20px;
+            margin-top: 20px; /* 위 요소와의 간격 */
+            box-shadow: 0 6px 20px rgba(0,0,0,0.08);
+            border: 1px solid rgba(255,255,255,0.15);
+        }
+        .qa-log-card h3 {
+            color: #333;
+            font-size: 18px;
+            margin-bottom: 12px;
+            font-weight: 700;
+        }
+        .qa-log-card pre {
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            max-height: 300px; /* 너무 길어지는 것을 방지 */
+            overflow-y: auto;
+            background: #f0f2f5;
+            padding: 12px;
+            border-radius: 8px;
+            font-size: 13px;
+            color: #444;
+            border: 1px solid #e1e5e9;
+        }
+        /* QA Log Card 테이블 스타일 */
+        .qa-log-card h4 { /* USER TEXT N 변경사항: 부분 스타일 */
+            margin-top: 15px;
+            margin-bottom: 8px;
+            font-size: 15px;
+            color: #444;
+        }
+        .qa-log-card h4:first-of-type {
+            margin-top: 0;
+        }
+        .qa-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 15px;
+            font-size: 13px;
+        }
+        .qa-table th, .qa-table td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+            word-break: break-all;
+        }
+        .qa-table th {
+            background-color: #f2f2f2;
+            font-weight: 600;
+        }
+        .qa-table tbody tr:nth-child(odd) {
+            background-color: #f9f9f9;
+        }
+    </style>
+</head>
+<body>
+    <div class="app">
+        <header class="app-header">
+            <h1>✨ AI 일일작업계획보고 취합본 생성기</h1>
+            <p>발주처/공단 보고용 텍스트를 간편하게 생성하세요</p>
+        </header>
+        <main class="app-main">
+            <div class="input-section">
+                <div class="input-group">
+                    <label for="projectInfo">본선터널(1구간),  신풍정거장</label>
+                    <textarea id="projectInfo" placeholder="위치별 작업내용을 입력하세요" rows="3"></textarea>
+                </div>
+                <div class="input-group">
+                    <label for="todayWork">신풍 환승통로</label>
+                    <textarea id="todayWork" placeholder="위치별 작업내용을 입력하세요" rows="4"></textarea>
+                </div>
+                <div class="input-group">
+                    <label for="issuesAndSolutions">본선터널(2구간), 도림정거장</label>
+                    <textarea id="issuesAndSolutions" placeholder="위치별 작업내용을 입력하세요" rows="3"></textarea>
+                </div>
+            </div>
+            <div class="output-section" id="outputSection">
+                <h2>📋 생성된 보고서</h2>
+                <div class="report-output">
+                    <pre id="reportContent"></pre>
+                    <textarea id="reportEditArea" class="report-edit-area" style="display:none;"></textarea>
+                </div>
+                <div class="share-buttons">
+                    <button class="share-btn" id="shareBtn">💬 카카오톡 공유</button>
+                    <button class="copy-btn" id="copyBtn">📋 복사하기</button>
+                    <button class="edit-btn" id="editReportBtn">✏️ 수정하기</button>
+                    <button class="edit-btn" id="saveChangesBtn" style="display:none; background-color: #28a745;">💾 저장</button>
+                    <button class="edit-btn" id="cancelEditBtn" style="display:none; background-color: #dc3545;">❌ 취소</button>
+                </div>
+                <div id="qaLogCard" class="qa-log-card" style="display:none;">
+                    <h3>📊 변경사항 (QA-CHECKLIST)</h3>
+                    <pre id="qaLogContentAreaCard"></pre>
+                </div>
+            </div>
+        </main>
+        <div class="bottom-buttons">
+            <button class="generate-btn" id="generateBtn">📄 보고서 생성</button>
+            <button class="clear-btn" id="clearBtn">🗑️ 초기화</button>
+            <button class="prompt-btn" id="promptEditBtn">⚙️ 프롬프트 수정</button>
+        </div>
+        <div id="promptModal" class="modal">
+            <div class="modal-content">
+                <h3>프롬프트(지시문) 수정</h3>
+                <textarea id="promptEditArea" rows="16" style="width:100%;font-size:13px;"></textarea>
+                <div class="modal-actions">
+                    <button id="promptSaveBtn">저장</button>
+                    <button id="promptCancelBtn">취소</button>
+                </div>
+            </div>
+        </div>
+        <footer class="app-footer">
+            <p>© 2024 공사일보 생성기 - 현장 업무 효율화</p>
+        </footer>
+    </div>
+    <script>
+        const projectInfo = document.getElementById('projectInfo');
+        const todayWork = document.getElementById('todayWork');
+        const issuesAndSolutions = document.getElementById('issuesAndSolutions');
+        const generateBtn = document.getElementById('generateBtn');
+        const clearBtn = document.getElementById('clearBtn');
+        const outputSection = document.getElementById('outputSection');
+        const reportContent = document.getElementById('reportContent');
+        const shareBtn = document.getElementById('shareBtn');
+        const copyBtn = document.getElementById('copyBtn');
+        const editReportBtn = document.getElementById('editReportBtn');
+        const reportEditArea = document.getElementById('reportEditArea');
+        const saveChangesBtn = document.getElementById('saveChangesBtn');
+        const cancelEditBtn = document.getElementById('cancelEditBtn');
+        const qaLogCard = document.getElementById('qaLogCard');
+        const qaLogContentAreaCard = document.getElementById('qaLogContentAreaCard');
+        let generatedReport = '';
+        let qaChecklistContent = '';
+        let PROMPT = '# INSTRUCTIONS\n' +
+            '1. 출력은 코드블럭으로 감싸고, "MAIN SET" 양식을 유지하여 작성할 것\n' +
+            '2. 입력된 USER TEXT 3개 항목을 기반으로 "MAIN SET"의 각 위치에 맞는 내용만 채워서 하나의 보고서로 취합할 것\n' +
+            '3. 작업 위치는 아래 순서에 따라 오름차순으로 정렬\n' +
+            '   - 1. 본선터널(1구간)\n' +
+            '   - 2. 신풍정거장\n' +
+            '   - 3. 신풍정거장 환승통로\n' +
+            '   - 4. 본선터널(2구간)\n' +
+            '   - 5. 도림사거리정거장\n' +
+            '4. 날짜는 USER TEXT에 명시된 날짜 중 첫 번째 항목 기준으로 작성\n' +
+            '5. "※ 안전관리 중점 POINT"는 중복 없이 10개 이하 항목을 추출하여 맨 하단에 1회만 작성\n' +
+            '6. "■ 총 인원" 및 "■ 총 장비" 항목은 전체 투입인원 및 장비를 단순 합산하여 작성하며, 위치별 공종 구분 없이 전체 수량만 작성\n' +
+            '7. QA-CHECKLIST(자동 검증 후 변환로그 출력)\n' +
+            '- 매핑 누락 여부: USER TEXT 내 단어 중 매핑되지 않은 항목 확인\n' +
+            '- 변환로그: 각 USER TEXT(USER TEXT 1, USER TEXT 2, USER TEXT 3)별로 구분하여, 어떤 USER TEXT에서 변경이 발생했는지 식별자와 함께 변경된 [원문] 및 [결과]를 다음 Markdown 테이블 형식으로 출력한다.\n\n' +
+            '  `USER TEXT 1 변경사항:`\n' +
+            '  | 원문 | 결과 |\n' +
+            '  |---|---|\n' +
+            '  | 예시 원문1 | 예시 결과1 |\n\n' +
+            '  `USER TEXT 2 변경사항:`\n' +
+            '  | 원문 | 결과 |\n' +
+            '  |---|---|\n' +
+            '  | 예시 원문3 | 예시 결과3 |\n\n' +
+            '  `USER TEXT 3 변경사항:`\n' +
+            '  | 원문 | 결과 |\n' +
+            '  |---|---|\n' +
+            '  | 예시 원문4 | 예시 결과4 |\n\n' +
+            '- 만약 특정 USER TEXT에서 변경사항이 없다면, 해당 섹션에 "| 변경사항 없음 | - |" 로 표기한다.\n' +
+            '- 전체적으로 변경사항이 전혀 없다면, "모든 USER TEXT에서 변경사항 없음"으로 표기한다.\n\n' +
+            '# Mapping Rules\n' +
+            '1. 인원 \n' +
+            '- 표기 순서: ①직영반장 → ②목공 → ③철근공 → ④연수생 → ⑤신호수 → ⑥그 외\n' +
+            '- "직영"은 연수생에 합산 (단, 직영반장은 별도 표기)\n' +
+            '- "0명", "-명" 등은 제외하고, 인원 항목이 없을 경우 "없음"으로 표기\n' +
+            '- 인원은 슬래시(/)로 구분\n' +
+            '- \'/ 앞뒤에 공백이 있든 없든 무관하며, 둘 다 정상적으로 인식 및 합산됨\'\n' +
+            '-"직영"은 연수생에 포함하여 계산\n' +
+            '2. 장비\n' +
+            '- ""0대", "-대" 등은 제외하고, 장비 항목이 없을 경우 "없음"으로 표기\n' +
+            '- 띄어쓰기, 대소문자, 괄호 등 오타 가능성을 감안하여 매핑\n' +
+            '- 장비는 슬래시(/)로 구분\n' +
+            '- \'/ 앞뒤에 공백이 있든 없든 무관하며, 둘 다 정상적으로 인식 및 합산됨\'\n' +
+            '3. ※ 안전관리 중점 POINT\n' +
+            '- 각 입력의 하단에서 "5대 안전사고(추락, 협착, 낙하, 질식, 폭발)"와 관련 있는 문장 중 최대 10개를 선택\n' +
+            '- 중복 항목 제거 후 출력\n' +
+            '- 순서는 추출된 순서를 그대로 유지\n' +
+            '4. "총 인원" 및 "총 장비" 계산 지침 (매우 중요, 반드시 정확하게 수행할 것):\n' +
+            '- 목표: USER TEXT 1, USER TEXT 2, USER TEXT 3 전체에 걸쳐 언급된 모든 인원수와 장비수를 정확히 합산한다.\n' +
+            '- 인원 합산:\n' +
+            '    a. USER TEXT 1, 2, 3에서 \'숫자+명\' 패턴을 모두 찾는다. (예: "목공 5명", "인부 10명")\n' +
+            '    b. \'직영반장\'으로 명시된 인원은 합산에서 제외한다. \'0명\', \'-명\', \'없음\' 등 수치가 없는 항목도 제외한다.\n' +
+            '    c. 위에서 찾은 모든 유효 인원수를 더하여 \'총 인원\'을 계산한다.\n' +
+            '- 장비 합산:\n' +
+            '    a. USER TEXT 1, 2, 3에서 \'숫자+대\' 패턴을 모두 찾는다. (예: "굴삭기 2대", "덤프 5대")\n' +
+            '    b. \'0대\', \'-대\', \'없음\' 등 수치가 없는 항목은 제외한다.\n' +
+            '    c. 위에서 찾은 모든 유효 장비수를 더하여 \'총 장비\'를 계산한다.\n' +
+            '- 최종 검증: 계산된 \'총 인원\'과 \'총 장비\'가 입력된 모든 개별 수치들의 실제 총합과 일치하는지 다시 한번 확인한다.\n' +
+            '- 출력 형식: 최종 결과는 "■ 총 인원 : [계산된 총 인원수]명", "■ 총 장비 : [계산된 총 장비수]대" 형식으로 출력한다. 절대로 \'##명\' 또는 \'##대\'를 사용하지 않는다.\n' +
+            '5. 타설 관련 규칙\n' +
+            '- "■ 작업내용"에 "타설"이라는 단어가 포함되면 "Con\'c 타설"로 자동 치환\n' +
+            '6. 매핑 딕셔너리 적용  \n' +
+            '- "장비명"+"(규격)"\n' +
+            '   예시:\n' +
+            '   앵글크레인 35T → 앵글크레인(35T), b/h08lc → B/H(08LC)\n' +
+            '-"B/H08W" → "B/H(08W)"\n' +
+            '-"백호06W"→ "B/H(06W)"\n' +
+            '-"25톤 카고크레인" → "카고크레인(25T)"\n' +
+            '-"크레인(25T)" → "카고크레인(25T)"\n' +
+            '-"기계타설공" → "타설공"    \n' +
+            '-"철근연수생" 또는 "목공연수생" → "연수생"    \n' +
+            '-"5톤트럭" → "화물차(5T)"    \n' +
+            '-"카리프트" → "카리프트공"    \n' +
+            '-"20톤크레인" → "하이드로크레인(20T)"    \n' +
+            '-"라이닝폼조립" → "라이닝폼공"    \n' +
+            '-"S/C타설팀" → "터널공"    \n' +
+            '-"목수" → "목공"    \n' +
+            '- 사전에 없는 항목 → 유사항목으로 추출\n\n' +
+            '# MAIN SET(출력예시)\n' +
+            '신안산선 4-1공구(포스코이앤씨)\n' +
+            '2025년 00월 00일(0) 작업계획보고\n\n' +
+            '1.본선터널(1구간, 대림-신풍)\n' +
+            '■작업내용\n' +
+            '- \n' +
+            '■시공현황(누계/설계)\n' +
+            '- \n' +
+            '■ 투입현황 (주간)\n' +
+            '- 인원 :\n' +
+            '- 장비 :\n\n' +
+            '2.신풍정거장\n' +
+            ' 1) 정거장 터널\n' +
+            ' ■ 작업내용\n' +
+            ' - \n' +
+            ' ■ 시공현황(누계/설계)\n' +
+            ' - \n' +
+            ' ■ 투입현황 (주간)\n' +
+            ' - 인원 : \n' +
+            ' - 장비 : \n\n' +
+            ' 2) 주출입구 연결터널\n' +
+            '  (1) PCB\n' +
+            '  ■ 작업내용\n' +
+            ' - PCB(정화조 방면) : \n' +
+            ' - PCB(정거장 방면) : \n' +
+            ' - PCB(환승통로 방면) : \n' +
+            '  ■ 시공현황(누계/설계)\n' +
+            ' - 정거장 방면\n' +
+            '   ㄴ \n' +
+            ' - 환승통로 방면\n' +
+            '   ㄴ \n' +
+            '  ■ 투입현황 (주간)\n' +
+            ' - 인원 : \n' +
+            ' - 장비 : \n\n' +
+            ' (2) PCC\n' +
+            '  ■ 작업내용\n' +
+            ' - \n' +
+            '  ■ 시공현황(누계/설계)\n' +
+            '   ㄴ \n' +
+            '  ■ 투입현황 (주간)\n' +
+            '   - 인원 : \n' +
+            '   - 장비 : \n\n' +
+            ' (3) PCD(환승통로 M/W구간)\n' +
+            '  ■ 작업내용\n' +
+            ' - \n' +
+            '  ■ 시공현황(누계/설계)\n' +
+            '   ㄴ \n' +
+            '  ■ 투입현황 (주간)\n' +
+            '   - 인원 : \n' +
+            '   - 장비 : \n\n' +
+            ' (4) PHA\n' +
+            '  ■ 작업내용\n' +
+            ' - \n' +
+            '  ■ 시공현황(누계/설계)\n' +
+            '   ㄴ \n' +
+            '  ■ 투입현황 (주간)\n' +
+            '   - 인원 : \n' +
+            '   - 장비 : \n\n' +
+            ' 3) 특별피난계단\n' +
+            '  ■ 작업내용\n' +
+            ' - \n' +
+            '  ■ 투입현황 (주간)\n' +
+            ' - 인원 : \n' +
+            ' - 장비 : \n\n' +
+            ' 4) 외부출입구(#2)\n' +
+            '  ■ 작업내용\n' +
+            ' - \n' +
+            '  ■ 시공현황(누계/설계)\n' +
+            ' - \n' +
+            '  ■ 투입현황 (주간)\n' +
+            ' - 인원 : \n' +
+            ' - 장비 : \n\n' +
+            '3. 신풍정거장 환승통로\n' +
+            ' 1) 환승 터널\n' +
+            '  ■ 작업 내용\n' +
+            ' - 연결터널(PCF) : \n' +
+            ' - 경사터널(PCE) :\n' +
+            '  ■ 시공 현황\n' +
+            ' - 연결터널(PCF) : \n' +
+            ' - 경사터널(PCE) : \n' +
+            '  ■ 투입 현황\n' +
+            ' - 인원 : \n' +
+            ' - 장비 :\n\n' +
+            ' 2) 개착 BOX\n' +
+            '  ■ 작업 내용\n' +
+            ' - 보라매 방면 :\n' +
+            ' - 대림 방면 :\n' +
+            '  ■ 시공 현황\n' +
+            ' - 보라매 방면(구조물) :\n' +
+            ' - 대림 방면(개착) :\n' +
+            '  ■ 투입 현황\n' +
+            ' - 인원 : \n' +
+            ' - 장비 :\n\n' +
+            '4. 본선터널(2구간, 신풍~도림)\n' +
+            '■작업내용\n' +
+            '- \n' +
+            '■시공현황(누계/설계)\n' +
+            '- \n' +
+            '■ 투입현황\n' +
+            '- 인원 : \n' +
+            '- 장비 : \n\n' +
+            '5. 도림사거리정거장\n' +
+            ' 1) 정거장 터널\n' +
+            ' ■ 작업내용\n' +
+            ' - \n' +
+            ' ■ 시공현황(누계/설계)\n' +
+            ' - \n' +
+            ' ■ 투입현황\n' +
+            ' - 인원 : \n' +
+            ' - 장비 : \n\n' +
+            ' 2) 출입구#1(PCC,PCA,PHA) 수직구 연결터널\n' +
+            ' ■ 작업내용\n' +
+            ' -\n' +
+            ' ■ 시공현황\n' +
+            ' -\n' +
+            '  ㄴ \n' +
+            ' ■ 투입현황\n' +
+            ' - 인원 : \n' +
+            ' - 장비 : \n\n' +
+            ' 3) 출입구#2 (PCC, PHB) 수직구 연결터널\n' +
+            ' ■ 작업내용\n' +
+            ' -\n' +
+            ' ■ 시공현황(누계/설계)\n' +
+            ' -   \n' +
+            ' ■ 투입현황\n' +
+            ' - 인원 :\n' +
+            ' - 장비 : \n\n' +
+            '■ 총 인원 : ##명\n' +
+            '■ 총 장비 : ##대\n\n' +
+            '※ 안전관리 중점 POINT\n' +
+            '1)\n' +
+            '2)\n' +
+            '3)\n' +
+            '4)\n' +
+            '5)\n' +
+            '6)\n' +
+            '7)\n' +
+            '8)\n' +
+            '9)\n' +
+            '10)';
+        function generateReport() {
+            const projectValue = projectInfo.value.trim();
+            const workValue = todayWork.value.trim();
+            const issuesValue = issuesAndSolutions.value.trim();
+            if (!projectValue || !workValue || !issuesValue) {
+                alert('모든 필드를 입력해주세요.');
+                return;
+            }
+            generateBtn.disabled = true;
+            generateBtn.innerHTML = '<span class="loading"></span> 생성 중...';
+            outputSection.classList.add('show');
+            reportContent.innerHTML = '<div style="text-align:center; padding:20px; color:#555;"><span class="loading" style="border-color: rgba(102, 126, 234, 0.2); border-top-color:#667eea; width: 28px; height: 28px; border-width:4px;"></span><p style="margin-top:12px; font-size:15px;">보고서를 생성 중입니다...</p></div>';
+
+            // Gemini API 호출
+            const API_KEY = "AIzaSyD69-wKYfZSID327fczrkx-JveJdGYIUIk";
+            const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${API_KEY}`;
+            const userText = `USER TEXT 1: ${projectValue}\nUSER TEXT 2: ${workValue}\nUSER TEXT 3: ${issuesValue}`;
+            const fullPrompt = `${PROMPT}\n\n${userText}`;
+            const body = JSON.stringify({
+                contents: [
+                    {
+                        role: "user",
+                        parts: [
+                            { text: fullPrompt }
+                        ]
+                    }
+                ]
+            });
+
+            fetch(endpoint, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body
+            })
+            .then(res => res.json())
+            .then(data => {
+                let apiResult = '';
+                try {
+                    apiResult = data.candidates[0].content.parts[0].text;
+                } catch (e) {
+                    apiResult = '[오류] Gemini 응답을 해석할 수 없습니다.';
+                    generatedReport = apiResult; 
+                }
+
+                // 1. 불필요한 `# MAIN SET` 및 코드블록 마커 제거
+                apiResult = apiResult.replace(/^```\s*# MAIN SET\s*```\s*\n?/gm, '');
+                apiResult = apiResult.replace(/^# MAIN SET\s*\n/gm, '');
+
+                // 2. QA-CHECKLIST 내용 추출 및 제거
+                const qaMatch = apiResult.match(/QA-CHECKLIST[\s\S]*/);
+                if (qaMatch && qaMatch[0]) {
+                    qaChecklistContent = qaMatch[0];
+                    apiResult = apiResult.replace(/QA-CHECKLIST[\s\S]*/g, '');
+                } else {
+                    qaChecklistContent = '추출된 변환로그가 없습니다.';
+                }
+
+                // 3. "신안산선 4-1공구(포스코이앤씨)" 문자열 변경
+                apiResult = apiResult.replace(/신안산선 4-1공구\(포스코이앤씨\)/g, '●신안산선 4-1공구(포스코이앤씨)');
+
+                // 4. 보고서 앞/뒤 특정 문자열 제거
+                // 맨 앞 ``` 제거 (공백 포함 가능성 고려)
+                apiResult = apiResult.replace(/^\s*```/, '');
+                // 맨 뒤 ```, **, 빈 줄 등을 포함한 불필요한 후행 문자들 제거
+                apiResult = apiResult.replace(/(\s*```|\s*\*\*|\s*)*$/, '');
+
+                // 최종적으로 다시 앞뒤 공백 제거
+                apiResult = apiResult.trim();
+
+                // 프론트엔드에서 인원/장비 합산 (정규표현식 사용)
+                const allInputs = projectInfo.value + " " + todayWork.value + " " + issuesAndSolutions.value;
+                let totalPerson = 0;
+                let totalEquip = 0;
+
+                const personMatches = allInputs.match(/(\d+)\s*명/g);
+                if (personMatches) {
+                    personMatches.forEach(match => {
+                        const num = parseInt(match.match(/(\d+)/)[0], 10);
+                        totalPerson += num;
+                    });
+                }
+
+                const equipMatches = allInputs.match(/(\d+)\s*대/g);
+                if (equipMatches) {
+                    equipMatches.forEach(match => {
+                        const num = parseInt(match.match(/(\d+)/)[0], 10);
+                        totalEquip += num;
+                    });
+                }
+
+                let finalReport = apiResult.replace(/■ 총 인원 : .*/g, `■ 총 인원 : ${totalPerson}명`);
+                finalReport = finalReport.replace(/■ 총 장비 : .*/g, `■ 총 장비 : ${totalEquip}대`);
+
+                reportContent.textContent = finalReport;
+                generatedReport = finalReport; // 공유 및 복사를 위해 업데이트
+
+                outputSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                
+                if (qaChecklistContent) {
+                    qaLogContentAreaCard.innerHTML = formatQaChecklist(qaChecklistContent);
+                    qaLogCard.style.display = 'block';
+                } else {
+                    qaLogCard.style.display = 'none';
+                }
+
+                generateBtn.disabled = false;
+                generateBtn.innerHTML = '📄 보고서 생성';
+            })
+            .catch(err => {
+                reportContent.textContent = '[오류] Gemini API 호출 실패: ' + err;
+                outputSection.classList.add('show');
+                generateBtn.disabled = false;
+                generateBtn.innerHTML = '📄 보고서 생성';
+                qaLogCard.style.display = 'none';
+            });
+        }
+        function clearAll() {
+            projectInfo.value = '';
+            todayWork.value = '';
+            issuesAndSolutions.value = '';
+            generatedReport = '';
+            qaChecklistContent = '';
+            outputSection.classList.remove('show');
+            qaLogCard.style.display = 'none';
+            qaLogContentAreaCard.textContent = '';
+
+            reportEditArea.style.display = 'none';
+            reportContent.style.display = 'block';
+            saveChangesBtn.style.display = 'none';
+            cancelEditBtn.style.display = 'none';
+            editReportBtn.style.display = 'inline-block';
+            shareBtn.style.display = 'inline-block';
+            copyBtn.style.display = 'inline-block';
+        }
+        function shareToKakao() {
+            if (!generatedReport) {
+                alert('먼저 보고서를 생성해주세요.');
+                return;
+            }
+            if (navigator.share) {
+                navigator.share({ title: '공사 일보', text: generatedReport }).catch(err => { console.log('공유 실패:', err); copyToClipboard(); });
+            } else {
+                copyToClipboard();
+            }
+        }
+        function copyToClipboard() {
+            if (!generatedReport) {
+                alert('먼저 보고서를 생성해주세요.');
+                return;
+            }
+            if (navigator.clipboard) {
+                navigator.clipboard.writeText(generatedReport).then(() => { alert('보고서가 클립보드에 복사되었습니다!\n카카오톡에 붙여넣기 하세요.'); }).catch(() => { fallbackCopyTextToClipboard(); });
+            } else {
+                fallbackCopyTextToClipboard();
+            }
+        }
+        function fallbackCopyTextToClipboard() {
+            const textArea = document.createElement('textarea');
+            textArea.value = generatedReport;
+            textArea.style.position = 'fixed';
+            textArea.style.left = '-999999px';
+            textArea.style.top = '-999999px';
+            document.body.appendChild(textArea);
+            textArea.focus();
+            textArea.select();
+            try {
+                document.execCommand('copy');
+                alert('보고서가 클립보드에 복사되었습니다!\n카카오톡에 붙여넣기 하세요.');
+            } catch (err) {
+                alert('복사에 실패했습니다. 수동으로 텍스트를 선택해서 복사해주세요.');
+            }
+            document.body.removeChild(textArea);
+        }
+        function formatQaChecklist(qaText) {
+            if (!qaText || qaText === '추출된 변환로그가 없습니다.' || qaText === '모든 USER TEXT에서 변경사항 없음') {
+                return `<p>${qaText}</p>`;
+            }
+
+            const userInputLabels = {
+                "USER TEXT 1": document.querySelector('label[for="projectInfo"]').textContent.trim(),
+                "USER TEXT 2": document.querySelector('label[for="todayWork"]').textContent.trim(),
+                "USER TEXT 3": document.querySelector('label[for="issuesAndSolutions"]').textContent.trim()
+            };
+
+            let htmlOutput = '';
+            // 백틱으로 감싸진 헤더를 기준으로 분리하되, 헤더 자체도 보존하기 위해 정규식에 캡처 그룹 사용
+            const sections = qaText.split(/(?=USER TEXT \d+[^:`]*:`)/g).filter(s => s.trim() !== '');
+            
+            if (sections.length === 0 && qaText.trim() !== '') { // 헤더 매칭이 안될 경우 원본 텍스트 반환
+                 return `<pre>${qaText}</pre>`;
+            }
+
+            sections.forEach((section) => {
+                const headerMatch = section.match(/USER TEXT (\d+)[^:`]*:`/);
+                let cleanSection = section;
+
+                if (headerMatch) {
+                    const headerKey = `USER TEXT ${headerMatch[1]}`;
+                    const userLabel = userInputLabels[headerKey] || headerKey; 
+                    htmlOutput += `<h4>${userLabel} 변경사항:</h4>`;
+                    // 실제 내용만 추출하기 위해 헤더 부분 제거
+                    cleanSection = section.substring(headerMatch[0].length).trim();
+                } else if (section.startsWith('모든 USER TEXT에서 변경사항 없음')) {
+                    htmlOutput += `<p>${section.trim()}</p>`;
+                    return; // 다음 섹션으로 넘어가지 않음
+                }
+
+                const lines = cleanSection.split('\n').map(l => l.trim()).filter(line => line !== '');
+                
+                if (lines.length === 0 && headerMatch) { // 헤더는 있었지만 내용이 없는 경우
+                     htmlOutput += '<p>변경사항 없음</p>';
+                     return;
+                }
+                if (lines.length < 2 && !cleanSection.includes("| 변경사항 없음 | - |")) {
+                    htmlOutput += `<pre>${cleanSection}</pre>`;
+                    return;
+                }
+                
+                if (cleanSection.includes("| 변경사항 없음 | - |")) {
+                    htmlOutput += '<p>변경사항 없음</p>';
+                    return;
+                }
+
+                const tableHeader = lines[0];
+                const tableSeparator = lines[1];
+
+                if (tableHeader && tableHeader.includes('| 원문 |') && tableHeader.includes('| 결과 |') && 
+                    tableSeparator && tableSeparator.includes('|---|---|')) {
+                    htmlOutput += '<table class="qa-table">';
+                    htmlOutput += '<thead><tr><th>원문</th><th>결과</th></tr></thead>';
+                    htmlOutput += '<tbody>';
+
+                    for (let i = 2; i < lines.length; i++) {
+                        const cells = lines[i].split('|').map(cell => cell.trim()).filter(cell => cell);
+                        if (cells.length === 2) {
+                             htmlOutput += `<tr><td>${cells[0]}</td><td>${cells[1]}</td></tr>`;
+                        }
+                    }
+                    htmlOutput += '</tbody></table>';
+                } else {
+                    htmlOutput += `<pre>${cleanSection}</pre>`;
+                }
+            });
+
+            return htmlOutput;
+        }
+        generateBtn.addEventListener('click', generateReport);
+        clearBtn.addEventListener('click', clearAll);
+        shareBtn.addEventListener('click', shareToKakao);
+        copyBtn.addEventListener('click', copyToClipboard);
+        editReportBtn.addEventListener('click', () => {
+            reportContent.style.display = 'none';
+            reportEditArea.value = generatedReport;
+            reportEditArea.style.display = 'block';
+            reportEditArea.focus();
+
+            editReportBtn.style.display = 'none';
+            shareBtn.style.display = 'none';
+            copyBtn.style.display = 'none';
+            saveChangesBtn.style.display = 'inline-block';
+            cancelEditBtn.style.display = 'inline-block';
+        });
+        saveChangesBtn.addEventListener('click', () => {
+            generatedReport = reportEditArea.value;
+            reportContent.textContent = generatedReport;
+
+            reportEditArea.style.display = 'none';
+            reportContent.style.display = 'block';
+
+            saveChangesBtn.style.display = 'none';
+            cancelEditBtn.style.display = 'none';
+            editReportBtn.style.display = 'inline-block';
+            shareBtn.style.display = 'inline-block';
+            copyBtn.style.display = 'inline-block';
+            alert('보고서 내용이 수정되었습니다.');
+            qaLogCard.style.display = 'block';
+        });
+        cancelEditBtn.addEventListener('click', () => {
+            reportEditArea.style.display = 'none';
+            reportContent.style.display = 'block';
+            reportContent.textContent = generatedReport;
+
+            saveChangesBtn.style.display = 'none';
+            cancelEditBtn.style.display = 'none';
+            editReportBtn.style.display = 'inline-block';
+            shareBtn.style.display = 'inline-block';
+            copyBtn.style.display = 'inline-block';
+            if(qaChecklistContent && qaChecklistContent !== '추출된 변환로그가 없습니다.') {
+                qaLogCard.style.display = 'block';
+            }
+        });
+        document.addEventListener('keydown', function(e) { if (e.ctrlKey && e.key === 'Enter') { generateReport(); } });
+        if ('serviceWorker' in navigator) { window.addEventListener('load', function() { navigator.serviceWorker.register('data:text/javascript,console.log("SW loaded")'); }); }
+
+        // 프롬프트 수정 모달 관련
+        const promptModal = document.getElementById('promptModal');
+        const promptEditBtn = document.getElementById('promptEditBtn');
+        const promptEditArea = document.getElementById('promptEditArea');
+        const promptSaveBtn = document.getElementById('promptSaveBtn');
+        const promptCancelBtn = document.getElementById('promptCancelBtn');
+
+        promptEditBtn.addEventListener('click', () => {
+            promptEditArea.value = PROMPT;
+            promptModal.classList.add('show');
+        });
+        promptCancelBtn.addEventListener('click', () => {
+            promptModal.classList.remove('show');
+        });
+        promptSaveBtn.addEventListener('click', () => {
+            PROMPT = promptEditArea.value;
+            promptModal.classList.remove('show');
+            alert('프롬프트가 저장되었습니다!');
+        });
+    </script>
+</body>
+</html> 
